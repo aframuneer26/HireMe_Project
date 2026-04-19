@@ -21,6 +21,8 @@ const Navbar = () => {
         {!isLoggedIn && <Link to="/register">Register</Link>}
         {isLoggedIn && <Link to="/roadmap">Analyzer</Link>}
         {isLoggedIn && <Link to="/interview">Mock Interview</Link>}
+        {isLoggedIn && <Link to="/resources">Resources</Link>}
+        {isLoggedIn && <Link to="/mcq">MCQ Test</Link>}
         {isLoggedIn && (
           <button onClick={handleLogout} className="logout-btn">
             Sign Out

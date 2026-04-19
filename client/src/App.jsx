@@ -7,6 +7,8 @@ import Roadmap from './pages/RoadmapPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import InterviewPage from './pages/InterviewPage';
+import ResourcesPage from './pages/ResourcesPage';
+import MCQPage from './pages/MCQPage';
 
 const App = () => {
   return (
@@ -30,6 +32,22 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <InterviewPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/resources"
+            element={
+              <ProtectedRoute>
+                <ResourcesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/mcq"
+            element={
+              <ProtectedRoute>
+                <MCQPage />
               </ProtectedRoute>
             }
           />
