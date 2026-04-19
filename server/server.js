@@ -31,13 +31,17 @@ app.use('/api/code', require('./routes/codeRoutes'));
 console.log('✅ Routes registered: Auth, Roadmap, Roles, Internships, Interview, Resources, MCQ, Code');
 
 // Database Connection
-console.log('🔗 Connecting to MongoDB:', process.env.MONGO_URI?.substring(0, 20) + '...');
-mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log('✅ MongoDB Connected'))
+console.log('🔗 Connecting to MongoDB:', process.env.MONGO_URI);
+mongoose.set('bufferCommands', false); // Disable buffering so it fails fast if not connected
+
+mongoose.connect(process.env.MONGO_URI, {
+  serverSelectionTimeoutMS: 5000 // Timeout after 5s
+})
+.then(() => console.log('✅ MongoDB Connected Successfully'))
 .catch(err => {
-  console.log('⚠️  MongoDB not connected. Auth features will not work.');
-  console.log('   Error:', err.message);
-  console.log('   To fix: Start MongoDB or use MongoDB Atlas');
+  console.error('❌ MongoDB Connection Failed!');
+  console.error('   Error:', err.message);
+  console.log('   Ensure MongoDB is running locally at 127.0.0.1:27017');
 });
 
 // Test Route
