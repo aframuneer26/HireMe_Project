@@ -1,17 +1,49 @@
 const Interview = require('../models/Interview');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const fs = require('fs');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const MAX_QUESTIONS = 5;
 
+// ─── PDF Text Extraction Utility ──────────────────────────────────────────────
+async function extractTextFromPDF(filePath) {
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const dataBuffer = fs.readFileSync(filePath);
+  const uint8Array = new Uint8Array(dataBuffer);
+  const loadingTask = pdfjsLib.getDocument({ data: uint8Array, useSystemFonts: true });
+  const pdfDocument = await loadingTask.promise;
+  let fullText = '';
+  for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
+    const page = await pdfDocument.getPage(pageNum);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items.map(item => item.str).join(' ');
+    fullText += pageText + '\n';
+  }
+  return fullText.trim();
+}
+
 // ─── Start Interview ────────────────────────────────────────────────────────
 exports.startInterview = async (req, res) => {
+  const resumeFile = req.file;
   try {
-    const { topic, resumeText } = req.body;
-    const userId = req.user.id;
+    const { topic } = req.body;
+    let { resumeText } = req.body;
+    const userId = req.userId;
 
-    // 1. Create a new interview session
+    // 1. If a file was uploaded, extract text from it
+    if (resumeFile) {
+      try {
+        resumeText = await extractTextFromPDF(resumeFile.path);
+        console.log(`✅ Interview Resume extracted. Length: ${resumeText.length}`);
+      } catch (err) {
+        console.error("Interview PDF Parse Error:", err);
+      } finally {
+        try { fs.unlinkSync(resumeFile.path); } catch (_) {}
+      }
+    }
+
+    // 2. Create a new interview session
     const interview = new Interview({
       userId,
       topic: topic || 'General Technical Roles',
@@ -19,7 +51,7 @@ exports.startInterview = async (req, res) => {
       history: []
     });
 
-    // 2. Build First Question prompt
+    // 3. Build First Question prompt
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
     const prompt = `
       You are an expert technical recruiter or hiring manager.
@@ -27,22 +59,23 @@ exports.startInterview = async (req, res) => {
       
       CONTEXT:
       Topic: ${topic || 'General'}
-      Candidate Resume Info: ${resumeText || 'No resume provided'}
+      Candidate Resume Content: ${resumeText ? resumeText.substring(0, 4000) : 'No resume provided'}
 
       INSTRUCTIONS:
       - Ask the VERY FIRST question of the interview.
-      - Make it professional and relevant to the context.
+      - If a resume is provided, your question MUST be tailored to an experience or skill listed in the resume.
+      - Make it professional and high-impact.
       - Do NOT ask more than one question.
-      - Avoid long introductions. Just say: "Hello, I am [Name]. Let's start the interview. [Question]"
+      - Start with: "Hello, I am your interviewer today. Let's begin. [Question]"
       
       FORMAT:
-      Plain text only. No emojis.
+      Plain text only. No emojis. Strictly professional.
     `;
 
     const result = await model.generateContent(prompt);
     const firstQuestion = result.response.text().trim();
 
-    // 3. Save first question to history
+    // 4. Save first question to history
     interview.history.push({
       role: 'interviewer',
       content: firstQuestion
@@ -56,6 +89,7 @@ exports.startInterview = async (req, res) => {
     });
   } catch (error) {
     console.error("Start Interview Error:", error);
+    if (resumeFile?.path) try { fs.unlinkSync(resumeFile.path); } catch (_) {}
     res.status(500).json({ message: "Failed to start interview." });
   }
 };
@@ -95,26 +129,28 @@ exports.processAnswer = async (req, res) => {
         OVERALL_SCORE: [Number 1-100]
         SUMMARY: [A professional summary of strengths and weaknesses]
         AREAS_FOR_IMPROVEMENT: [Bullet points of things to work on]
+        
+        No emojis.
       `
       : `
-        You are conducting a mock interview. Here is the conversation so far:
+        You are conducting a professional mock interview. Here is the conversation so far:
         ${chatHistory}
 
         INSTRUCTIONS:
-        1. Briefly acknowledge the candidate's last answer (1 sentence).
+        1. Briefly acknowledge the candidate's last answer in a professional way.
         2. Ask the NEXT logical interview question.
-        3. Do NOT provide feedback yet.
-        4. ONLY ask one question.
+        3. Only ask ONE question at a time.
+        4. No emojis.
 
         FORMAT:
-        Plain text only. No emojis.
+        Plain text only.
       `;
 
     const result = await model.generateContent(prompt);
     const aiResponse = result.response.text().trim();
 
     if (isLastQuestion) {
-      // Parse feedback and score (simplified)
+      // Parse feedback and score
       const scoreMatch = aiResponse.match(/OVERALL_SCORE:\s*(\d+)/);
       interview.overallScore = scoreMatch ? parseInt(scoreMatch[1]) : 70;
       interview.finalFeedback = aiResponse;

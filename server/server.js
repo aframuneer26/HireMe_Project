@@ -27,6 +27,7 @@ app.use('/api/interview', interviewRoutes);
 console.log('✅ Routes registered: Auth, Roadmap, Roles, Internships, Interview');
 
 // Database Connection
+console.log('🔗 Connecting to MongoDB:', process.env.MONGO_URI?.substring(0, 20) + '...');
 mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log('✅ MongoDB Connected'))
 .catch(err => {
