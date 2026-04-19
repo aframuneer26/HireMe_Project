@@ -17,24 +17,23 @@ const roadmapRoutes = require('./routes/roadmapRoutes');
 const roleRoutes = require('./routes/roleRoutes');
 const internshipRoutes = require('./routes/internshipRoutes');
 const interviewRoutes = require('./routes/interviewRoutes');
-app.use('/api/interview', interviewRoutes);
 
-
-
-app.use('/api/internships', internshipRoutes);
-app.use('/api/roles', roleRoutes);
 console.log('🔍 Registering routes...');
 app.use('/api/auth', authRoutes);
 app.use('/api/roadmap', roadmapRoutes);
-console.log('✅ Routes registered: /api/auth, /api/roadmap, /api/roles, and /api/internships');
+app.use('/api/roles', roleRoutes);
+app.use('/api/internships', internshipRoutes);
+app.use('/api/interview', interviewRoutes);
+console.log('✅ Routes registered: Auth, Roadmap, Roles, Internships, Interview');
 
 // Database Connection
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
+mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log('✅ MongoDB Connected'))
-.catch(err => console.log('❌ MongoDB Error:', err));
+.catch(err => {
+  console.log('⚠️  MongoDB not connected. Auth features will not work.');
+  console.log('   Error:', err.message);
+  console.log('   To fix: Start MongoDB or use MongoDB Atlas');
+});
 
 // Test Route
 app.get('/', (req, res) => {

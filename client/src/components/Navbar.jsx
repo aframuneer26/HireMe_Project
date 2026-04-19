@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-
 const Navbar = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
@@ -20,8 +19,13 @@ const Navbar = () => {
       <div className="navbar-links">
         {!isLoggedIn && <Link to="/login">Login</Link>}
         {!isLoggedIn && <Link to="/register">Register</Link>}
-        {isLoggedIn && <Link to="/roadmap">Generate Roadmap</Link>}
-        {isLoggedIn && <button onClick={handleLogout} className="logout-btn">Logout</button>}
+        {isLoggedIn && <Link to="/roadmap">Analyzer</Link>}
+        {isLoggedIn && <Link to="/interview">Mock Interview</Link>}
+        {isLoggedIn && (
+          <button onClick={handleLogout} className="logout-btn">
+            Sign Out
+          </button>
+        )}
       </div>
     </nav>
   );
