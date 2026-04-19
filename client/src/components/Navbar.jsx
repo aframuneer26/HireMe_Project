@@ -23,6 +23,7 @@ const Navbar = () => {
         {isLoggedIn && <Link to="/interview">Mock Interview</Link>}
         {isLoggedIn && <Link to="/resources">Resources</Link>}
         {isLoggedIn && <Link to="/mcq">MCQ Test</Link>}
+        {isLoggedIn && <Link to="/editor">Code Lab</Link>}
         {isLoggedIn && (
           <button onClick={handleLogout} className="logout-btn">
             Sign Out

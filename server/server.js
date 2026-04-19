@@ -27,7 +27,8 @@ app.use('/api/internships', internshipRoutes);
 app.use('/api/interview', interviewRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/mcq', require('./routes/mcqRoutes'));
-console.log('✅ Routes registered: Auth, Roadmap, Roles, Internships, Interview, Resources, MCQ');
+app.use('/api/code', require('./routes/codeRoutes'));
+console.log('✅ Routes registered: Auth, Roadmap, Roles, Internships, Interview, Resources, MCQ, Code');
 
 // Database Connection
 console.log('🔗 Connecting to MongoDB:', process.env.MONGO_URI?.substring(0, 20) + '...');

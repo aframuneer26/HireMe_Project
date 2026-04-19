@@ -9,6 +9,7 @@ import Home from './pages/Home';
 import InterviewPage from './pages/InterviewPage';
 import ResourcesPage from './pages/ResourcesPage';
 import MCQPage from './pages/MCQPage';
+import EditorPage from './pages/EditorPage';
 
 const App = () => {
   return (
@@ -48,6 +49,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <MCQPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/editor"
+            element={
+              <ProtectedRoute>
+                <EditorPage />
               </ProtectedRoute>
             }
           />
