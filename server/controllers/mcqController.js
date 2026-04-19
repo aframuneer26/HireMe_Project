@@ -7,7 +7,7 @@ exports.getNextQuestion = async (req, res) => {
     // currentLevel: 'easy', 'medium', 'hard'
     // history: array of { question, options, userAnswer, correctAnswer, isCorrect }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
       You are an expert technical interviewer creating an ADAPTIVE MCQ assessment.
@@ -46,7 +46,7 @@ exports.getNextQuestion = async (req, res) => {
 exports.getFinalReview = async (req, res) => {
     try {
       const { history, topic } = req.body;
-      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   
       const prompt = `
         The candidate has completed an adaptive MCQ test on ${topic}.

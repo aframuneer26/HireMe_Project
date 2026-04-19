@@ -9,6 +9,10 @@ const LANGUAGE_VERSIONS = {
   rust: "1.68.2"
 };
 
+const { exec } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
 exports.executeCode = async (req, res) => {
   try {
     const { language, sourceCode } = req.body;
@@ -17,23 +21,32 @@ exports.executeCode = async (req, res) => {
       return res.status(400).json({ message: "Code is required." });
     }
 
-    const response = await axios.post("https://emkc.org/api/v2/piston/execute", {
-      language: language,
-      version: LANGUAGE_VERSIONS[language] || "*",
-      files: [
-        {
-          content: sourceCode,
-        },
-      ],
-    });
+    if (language !== 'javascript' && language !== 'python') {
+        return res.status(400).json({ message: `Language ${language} is not supported locally yet. Only JavaScript and Python are available.` });
+    }
 
-    res.json({
-      output: response.data.run.output,
-      error: response.data.run.stderr,
-      stdout: response.data.run.stdout
+    const tempDir = path.join(__dirname, '../temp');
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+
+    const filename = `code_${Date.now()}.${language === 'javascript' ? 'js' : 'py'}`;
+    const filePath = path.join(tempDir, filename);
+
+    fs.writeFileSync(filePath, sourceCode);
+
+    const command = language === 'javascript' ? `node "${filePath}"` : `python "${filePath}"`;
+
+    exec(command, (error, stdout, stderr) => {
+      // Clean up file
+      try { fs.unlinkSync(filePath); } catch (e) {}
+
+      res.json({
+        output: stdout + stderr,
+        stdout: stdout,
+        error: stderr
+      });
     });
   } catch (error) {
-    console.error("Execution error:", error.response?.data || error.message);
-    res.status(500).json({ message: "Failed to execute code. Please try again." });
+    console.error("Execution error:", error.message);
+    res.status(500).json({ message: "Failed to execute code locally. Please try again." });
   }
 };

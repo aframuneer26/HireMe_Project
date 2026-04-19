@@ -9,7 +9,7 @@ exports.getSkillResources = async (req, res) => {
       return res.status(400).json({ message: "Please provide a list of skills." });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
       You are an expert technical educator and career librarian.

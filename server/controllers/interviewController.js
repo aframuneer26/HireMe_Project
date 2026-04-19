@@ -7,20 +7,13 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const MAX_QUESTIONS = 5;
 
 // ─── PDF Text Extraction Utility ──────────────────────────────────────────────
+const pdfParse = require('pdf-parse');
+
+// ─── PDF Text Extraction Utility ──────────────────────────────────────────────
 async function extractTextFromPDF(filePath) {
-  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
   const dataBuffer = fs.readFileSync(filePath);
-  const uint8Array = new Uint8Array(dataBuffer);
-  const loadingTask = pdfjsLib.getDocument({ data: uint8Array, useSystemFonts: true });
-  const pdfDocument = await loadingTask.promise;
-  let fullText = '';
-  for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
-    const page = await pdfDocument.getPage(pageNum);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items.map(item => item.str).join(' ');
-    fullText += pageText + '\n';
-  }
-  return fullText.trim();
+  const data = await pdfParse(dataBuffer);
+  return data.text.trim();
 }
 
 // ─── Start Interview ────────────────────────────────────────────────────────
@@ -52,7 +45,7 @@ exports.startInterview = async (req, res) => {
     });
 
     // 3. Build First Question prompt
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const prompt = `
       You are an expert technical recruiter or hiring manager.
       You are conducting a professional mock interview for a candidate.
@@ -113,7 +106,7 @@ exports.processAnswer = async (req, res) => {
     const questionCount = interview.history.filter(h => h.role === 'interviewer').length;
 
     // 2. Call AI to evaluate answer and ask next question (or finish)
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const isLastQuestion = questionCount >= MAX_QUESTIONS;
 
     const chatHistory = interview.history.map(h => `${h.role === 'interviewer' ? 'Interviewer' : 'Candidate'}: ${h.content}`).join('\n');

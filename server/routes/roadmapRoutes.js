@@ -5,7 +5,10 @@ const { generateRoadmap } = require('../controllers/roadmapController');
 
 // Store file with original extension preservation
 const storage = multer.diskStorage({
-  destination: 'uploads/',
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, '../uploads/');
+    cb(null, uploadPath);
+  },
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
   }

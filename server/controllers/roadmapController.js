@@ -2,26 +2,13 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fs = require('fs');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// ─── PDF Text Extraction using pdfjs-dist ──────────────────────────────────────
+const pdfParse = require('pdf-parse');
+
+// ─── PDF Text Extraction using pdf-parse v1.1.1 ───────────────────────────────
 async function extractTextFromPDF(filePath) {
-  // Dynamically import pdfjs-dist (ESM compatible via require)
-  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  
   const dataBuffer = fs.readFileSync(filePath);
-  const uint8Array = new Uint8Array(dataBuffer);
-  
-  const loadingTask = pdfjsLib.getDocument({ data: uint8Array, useSystemFonts: true });
-  const pdfDocument = await loadingTask.promise;
-  
-  let fullText = '';
-  for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
-    const page = await pdfDocument.getPage(pageNum);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items.map(item => item.str).join(' ');
-    fullText += pageText + '\n';
-  }
-  
-  return fullText.trim();
+  const data = await pdfParse(dataBuffer);
+  return data.text.trim();
 }
 
 // ─── NLP Pre-processing ────────────────────────────────────────────────────────
@@ -64,17 +51,22 @@ function preprocessText(rawText) {
 
 // ─── Main Handler ──────────────────────────────────────────────────────────────
 exports.generateRoadmap = async (req, res) => {
+  console.log("🚀 Roadmap generation request received");
   const resumeFile = req.file;
 
   try {
     const { jobDescription } = req.body;
 
     if (!jobDescription) {
+      console.log("❌ Missing JD");
       return res.status(400).json({ message: "Job Description is required." });
     }
     if (!resumeFile) {
+      console.log("❌ Missing Resume");
       return res.status(400).json({ message: "Resume PDF is required." });
     }
+
+    console.log(`📂 Processing file: ${resumeFile.filename}`);
 
     // ── 1. Extract text from PDF ──────────────────────────────────────────────
     let rawResumeText = '';
@@ -102,7 +94,7 @@ exports.generateRoadmap = async (req, res) => {
     console.log(`✅ NLP done. Skills detected: ${detectedSkills.join(', ') || 'none'}`);
 
     // ── 3. Build Gemini Prompt ────────────────────────────────────────────────
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
 You are an expert career coach and senior technical recruiter.
@@ -141,15 +133,39 @@ STRICT RULES:
 5. No paragraphs.
     `;
 
-    // ── 4. Call Gemini ────────────────────────────────────────────────────────
+    // ── 4. Call Gemini with retry logic ──────────────────────────────────────
     let roadmap = "Could not generate roadmap. Please try again.";
-    try {
-      const result = await model.generateContent(prompt);
-      roadmap = result.response.text() || roadmap;
-    } catch (aiErr) {
-      console.error("❌ Gemini API error:", aiErr.message);
-      return res.status(500).json({ message: "AI generation failed. Please check your Gemini API key." });
+    let lastAiError = null;
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`🤖 Gemini attempt ${attempt}...`);
+        const result = await model.generateContent(prompt);
+        roadmap = result.response.text() || roadmap;
+        lastAiError = null;
+        break; // success — exit loop
+      } catch (aiErr) {
+        lastAiError = aiErr;
+        const is429 = aiErr.status === 429 || aiErr.message?.includes('429');
+        console.error(`❌ Gemini attempt ${attempt} failed (${is429 ? '429 rate limit' : aiErr.message})`);
+        if (is429 && attempt < 3) {
+          const waitSec = attempt * 15; // 15s, then 30s
+          console.log(`⏳ Waiting ${waitSec}s before retry...`);
+          await new Promise(r => setTimeout(r, waitSec * 1000));
+        } else {
+          break;
+        }
+      }
     }
+
+    if (lastAiError) {
+      const is429 = lastAiError.status === 429 || lastAiError.message?.includes('429');
+      const msg = is429
+        ? "AI is temporarily busy (rate limit). Please wait 30 seconds and try again."
+        : "AI generation failed. Please check your Gemini API key.";
+      return res.status(500).json({ message: msg });
+    }
+
 
     return res.json({ roadmap, detectedSkills });
 

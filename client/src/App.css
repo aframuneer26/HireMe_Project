@@ -121,6 +121,7 @@ a { color: inherit; text-decoration: none; }
   height: calc(100vh - 64px);
   display: flex;
   flex-direction: column;
+  overflow-y: auto; /* Enable internal scrolling */
 }
 
 /* ─── Cards ────────────────────────────────────────────────────────────────── */
